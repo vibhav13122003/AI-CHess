@@ -1,4 +1,5 @@
 import {
+  activePracticeAtom,
   boardAtom,
   currentPositionAtom,
   engineDepthAtom,
@@ -24,6 +25,7 @@ export const useCurrentPosition = (engine: UciEngine | null) => {
   const gameEval = useAtomValue(gameEvalAtom);
   const game = useAtomValue(gameAtom);
   const board = useAtomValue(boardAtom);
+  const practice = useAtomValue(activePracticeAtom);
   const depth = useAtomValue(engineDepthAtom);
   const multiPv = useAtomValue(engineMultiPvAtom);
   const [savedEvals, setSavedEvals] = useAtom(savedEvalsAtom);
@@ -76,6 +78,7 @@ export const useCurrentPosition = (engine: UciEngine | null) => {
 
     if (
       !position.eval &&
+      !practice?.isActive &&
       engine?.getIsReady() &&
       engine.name &&
       !board.isCheckmate() &&
@@ -195,7 +198,7 @@ export const useCurrentPosition = (engine: UciEngine | null) => {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameEval, board, game, engine, depth, multiPv]);
+  }, [gameEval, board, game, engine, depth, multiPv, practice]);
 
   return currentPosition;
 };

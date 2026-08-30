@@ -13,23 +13,23 @@ import {
   Tabs,
   Typography,
 } from "@mui/material";
-import { useAtom, useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
-import { Chess } from "chess.js";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
 import { getEvaluateGameParams } from "@/lib/chess";
-import { useChessActions } from "@/hooks/useChessActions";
 import {
   FinalGameReview,
-  PracticeSession,
-  SavedPracticePosition,
+  PerformanceSnapshot,
+  PracticeContext,
+  TacticalOpportunity,
+  TurningPoint,
 } from "@/types/ai";
-import {
-  activePracticeAtom,
-  boardAtom,
-  gameAtom,
-  gameEvalAtom,
-  savedPracticePositionsAtom,
-} from "../../states";
+import { activePracticeAtom, gameAtom, gameEvalAtom } from "../../states";
+import { useGameNavigation } from "../../hooks/useGameNavigation";
+import InteractiveChessText from "@/components/InteractiveChessText";
+import InteractiveMoveChip from "@/components/InteractiveMoveChip";
+import { CLASSIFICATION_COLORS } from "@/constants";
+import { MoveClassification } from "@/types/enums";
+import PracticeMode from "./practiceMode";
 
 const tabs = [
   "Overview",
@@ -43,10 +43,16 @@ const tabs = [
 export default function AiGameReview() {
   const game = useAtomValue(gameAtom);
   const gameEval = useAtomValue(gameEvalAtom);
+  const practice = useAtomValue(activePracticeAtom);
   const [review, setReview] = useState<FinalGameReview>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState(0);
+
+  // Dedicated Hard UI Mode: When Practice is active, immediately render PracticeMode
+  if (practice?.isActive) {
+    return <PracticeMode />;
+  }
 
   const generateReview = async () => {
     if (!gameEval) return;
@@ -100,9 +106,11 @@ export default function AiGameReview() {
         bgcolor: "#101c28",
         border: "1px solid #238fc4",
         overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <Stack spacing={2} height="100%" minHeight={0}>
+      <Stack spacing={2} height="100%" minHeight={0} flex={1}>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
@@ -110,18 +118,26 @@ export default function AiGameReview() {
           gap={1}
         >
           <Box>
-            <Typography variant="h5" fontWeight={800} color="#63c5f3">
+            <Typography variant="h6" fontWeight={800} color="#63c5f3">
               AI Game Review
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Stockfish-backed coaching for your completed game
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+            >
+              Stockfish-backed master coaching & interactive practice
             </Typography>
           </Box>
           <Button
             variant="contained"
             disabled={!gameEval || loading}
             onClick={generateReview}
-            sx={{ minWidth: 170 }}
+            sx={{
+              minWidth: 160,
+              bgcolor: "#238fc4",
+              "&:hover": { bgcolor: "#1a709c" },
+            }}
           >
             {loading ? (
               <CircularProgress size={18} color="inherit" />
@@ -133,23 +149,44 @@ export default function AiGameReview() {
           </Button>
         </Stack>
 
-        <PracticeTrainer />
-        {error && <Alert severity="error">{error}</Alert>}
+        {error && (
+          <Alert
+            severity="warning"
+            onClose={() => setError(undefined)}
+            sx={{ py: 0.5 }}
+          >
+            {error}
+          </Alert>
+        )}
+
         {!review && !loading && <EmptyState />}
         {loading && <LoadingState />}
 
         {review && (
-          <>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              flex: 1,
+              minHeight: 0,
+              overflow: "hidden",
+            }}
+          >
             <Tabs
               value={tab}
               onChange={(_, value) => setTab(value)}
               variant="fullWidth"
               sx={{
+                minHeight: 36,
+                borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
                 "& .MuiTab-root": {
                   minWidth: 0,
+                  minHeight: 36,
+                  py: 0.5,
                   px: { xs: 0.25, sm: 1 },
-                  fontSize: { xs: "0.65rem", sm: "0.8rem" },
+                  fontSize: { xs: "0.68rem", sm: "0.78rem" },
                   fontWeight: 700,
+                  textTransform: "none",
                 },
               }}
             >
@@ -157,168 +194,470 @@ export default function AiGameReview() {
                 <Tab key={label} label={label} />
               ))}
             </Tabs>
-            <Box sx={{ pt: 1, minHeight: 0, flex: 1, overflowY: "auto", pr: 0.75 }}>
-              {tab === 0 && <Overview review={review} />}
-              {tab === 1 && <TurningPoints review={review} game={game} />}
-              {tab === 2 && (
-                <Narrative
-                  title="Tactical themes"
-                  text={review.tacticalAnalysis.content}
-                  color="#ecb951"
-                />
-              )}
-              {tab === 3 && (
-                <Narrative
-                  title="Positional and strategic plan"
-                  text={`${review.positionalAnalysis.content}\n\n${review.strategicAnalysis.content}`}
-                  color="#bb9cf4"
-                />
-              )}
-              {tab === 4 && (
-                <ListCard
-                  title="What you did well"
-                  items={review.strengths}
-                  color="#48c78e"
-                />
-              )}
+
+            <Box
+              sx={{
+                pt: 1.5,
+                minHeight: 0,
+                flex: 1,
+                overflowY: "auto",
+                pr: 0.75,
+              }}
+            >
+              {tab === 0 && <OverviewTab review={review} />}
+              {tab === 1 && <TurningPointsTab review={review} />}
+              {tab === 2 && <TacticsTab review={review} />}
+              {tab === 3 && <PositionTab review={review} />}
+              {tab === 4 && <StrengthsTab review={review} />}
               {tab === 5 && <TrainingTab review={review} />}
             </Box>
-          </>
+          </Box>
         )}
       </Stack>
     </Paper>
   );
 }
 
-function Overview({ review }: { review: FinalGameReview }) {
+// -------------------------------------------------------------
+// TAB 1: OVERVIEW — LEVEL 1 (What happened?) & PERFORMANCE SNAPSHOT
+// -------------------------------------------------------------
+function OverviewTab({ review }: { review: FinalGameReview }) {
+  const { startPractice } = useGameNavigation();
+  const topMistake = review.biggestTurningPoint || review.turningPoints[0];
+
+  const toPracticeContext = (point: TurningPoint): PracticeContext => ({
+    source: "turning-point",
+    ply: point.ply,
+    moveNumber: point.moveNumber,
+    color: point.color,
+    fen: point.fen,
+    playedSan: point.san,
+    playedUci: point.move,
+    bestMove: point.bestMove || point.alternatives[0]?.move || "",
+    bestMoveSan:
+      point.alternatives[0]?.san ||
+      point.principalVariationSan[0] ||
+      point.bestMove ||
+      "Best move",
+    evaluationBefore: point.evaluationBefore,
+    evaluationAfter: point.evaluationAfter,
+    evaluationChange: point.evaluationChange,
+    principalVariationSan: point.principalVariationSan,
+    principalVariation: point.principalVariation,
+    alternatives: point.alternatives,
+    whyItMatters: point.whyItMatters,
+    beforeSituation: point.beforeSituation,
+    afterSituation: point.afterSituation,
+    lesson: point.lesson,
+    opponentThreat: point.opponentThreat,
+    tacticalMotif: point.tacticalMotif,
+  });
+
   return (
     <Stack spacing={2}>
-      <Narrative
-        title="Coach's assessment"
-        text={review.overallAssessment}
-        color="#63c5f3"
-      />
-      <Narrative
-        title="How the game unfolded"
-        text={review.gameSummary}
-        color="#f3f5f7"
-      />
-      <Narrative title="Main lesson" text={review.mainLesson} color="#8cdbac" />
+      <Paper
+        sx={{
+          p: 2,
+          bgcolor: "rgba(255,255,255,0.035)",
+          borderTop: "3px solid #63c5f3",
+        }}
+      >
+        <Typography fontWeight={800} color="#63c5f3" mb={1}>
+          Game Summary
+        </Typography>
+        <InteractiveChessText text={review.gameSummary} />
+      </Paper>
+
+      {review.performanceSnapshot && (
+        <PerformanceSnapshotCard snapshot={review.performanceSnapshot} />
+      )}
+
+      {topMistake && (
+        <Paper
+          sx={{
+            p: 2,
+            bgcolor: "rgba(255,255,255,0.035)",
+            borderTop: "3px solid #ef6b73",
+          }}
+        >
+          <Stack spacing={1}>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Typography fontWeight={800} color="#ef6b73">
+                Biggest Turning Point
+              </Typography>
+              <InteractiveMoveChip
+                san={`${topMistake.moveNumber}${topMistake.color === "white" ? "." : "..."} ${topMistake.san}`}
+                ply={topMistake.ply}
+                color={topMistake.color}
+              />
+            </Stack>
+
+            <Typography variant="body2">
+              <InteractiveChessText text={topMistake.explanation} />
+            </Typography>
+
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              pt={0.5}
+            >
+              <Typography variant="caption" color="text.secondary">
+                Win chance: {Math.round(topMistake.evaluationBefore)}% →{" "}
+                {Math.round(topMistake.evaluationAfter)}%
+              </Typography>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => startPractice(toPracticeContext(topMistake))}
+                sx={{
+                  bgcolor: "#238fc4",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  textTransform: "none",
+                }}
+              >
+                Practice Position
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+      )}
+
+      <Paper
+        sx={{
+          p: 2,
+          bgcolor: "rgba(255,255,255,0.035)",
+          borderTop: "3px solid #48c78e",
+        }}
+      >
+        <Typography fontWeight={800} color="#48c78e" mb={1}>
+          Main Takeaway
+        </Typography>
+        <InteractiveChessText text={review.mainLesson} />
+      </Paper>
     </Stack>
   );
 }
 
-function TurningPoints({ review, game }: { review: FinalGameReview; game: Chess }) {
+function PerformanceSnapshotCard({
+  snapshot,
+}: {
+  snapshot: PerformanceSnapshot;
+}) {
+  return (
+    <Paper
+      sx={{
+        p: 2,
+        bgcolor: "rgba(255,255,255,0.035)",
+        borderTop: "3px solid #ecb951",
+      }}
+    >
+      <Typography fontWeight={800} color="#ecb951" mb={1.5}>
+        Performance Snapshot
+      </Typography>
+
+      <Stack spacing={1.5}>
+        <Stack direction="row" spacing={2} justifyContent="space-around">
+          <Box textAlign="center">
+            <Typography variant="caption" color="text.secondary">
+              WHITE ACCURACY
+            </Typography>
+            <Typography variant="h6" fontWeight={800} color="#ffffff">
+              {snapshot.accuracy.white}%
+            </Typography>
+          </Box>
+          <Divider orientation="vertical" flexItem />
+          <Box textAlign="center">
+            <Typography variant="caption" color="text.secondary">
+              BLACK ACCURACY
+            </Typography>
+            <Typography variant="h6" fontWeight={800} color="#ffffff">
+              {snapshot.accuracy.black}%
+            </Typography>
+          </Box>
+        </Stack>
+
+        <Divider sx={{ borderColor: "rgba(255,255,255,0.06)" }} />
+
+        <Stack
+          direction="row"
+          spacing={1}
+          justifyContent="center"
+          flexWrap="wrap"
+          gap={0.5}
+        >
+          <Chip
+            size="small"
+            label={`Blunders: W ${snapshot.blunders.white} · B ${snapshot.blunders.black}`}
+            sx={{
+              bgcolor: "rgba(223, 83, 83, 0.15)",
+              color: "#df5353",
+              fontWeight: 700,
+            }}
+          />
+          <Chip
+            size="small"
+            label={`Mistakes: W ${snapshot.mistakes.white} · B ${snapshot.mistakes.black}`}
+            sx={{
+              bgcolor: "rgba(230, 159, 0, 0.15)",
+              color: "#e69f00",
+              fontWeight: 700,
+            }}
+          />
+          <Chip
+            size="small"
+            label={`Inaccuracies: W ${snapshot.inaccuracies.white} · B ${snapshot.inaccuracies.black}`}
+            sx={{
+              bgcolor: "rgba(242, 190, 31, 0.15)",
+              color: "#f2be1f",
+              fontWeight: 700,
+            }}
+          />
+          <Chip
+            size="small"
+            label={`Best/Splendid: W ${snapshot.bestMoves.white} · B ${snapshot.bestMoves.black}`}
+            sx={{
+              bgcolor: "rgba(34, 172, 56, 0.15)",
+              color: "#22ac38",
+              fontWeight: 700,
+            }}
+          />
+        </Stack>
+      </Stack>
+    </Paper>
+  );
+}
+
+// -------------------------------------------------------------
+// TAB 2: TURNING POINTS — LEVEL 2 (Game Direction / Trajectory)
+// -------------------------------------------------------------
+function TurningPointsTab({ review }: { review: FinalGameReview }) {
+  if (!review.turningPoints.length) {
+    return (
+      <Paper sx={{ p: 2, bgcolor: "rgba(255,255,255,0.035)" }}>
+        <Typography variant="body2" color="text.secondary">
+          No significant turning points detected in this game. Both sides played
+          stably.
+        </Typography>
+      </Paper>
+    );
+  }
+
   return (
     <Stack spacing={1.5}>
       {review.turningPoints.map((point) => (
-        <TurningPointCard key={point.ply} point={point} game={game} />
+        <TurningPointCard key={point.ply} point={point} />
       ))}
     </Stack>
   );
 }
 
-function TurningPointCard({
-  point,
-  game,
-}: {
-  point: FinalGameReview["turningPoints"][number];
-  game: Chess;
-}) {
-  const { goToMove } = useChessActions(boardAtom);
-  const [, setPractice] = useAtom(activePracticeAtom);
-  const [savedPositions, setSavedPositions] = useAtom(savedPracticePositionsAtom);
+function TurningPointCard({ point }: { point: TurningPoint }) {
+  const { startPractice } = useGameNavigation();
   const [showDetails, setShowDetails] = useState(false);
-  const saved = savedPositions.some((item) => item.moment.fen === point.fen);
-  const topOption = point.alternatives[0]?.san;
+  const isWhite = point.color === "white";
+  const moveNumberStr = `${point.moveNumber}${isWhite ? "." : "..."}`;
+  const classification = (point.classification ||
+    "Mistake") as MoveClassification;
+  const badgeColor = CLASSIFICATION_COLORS[classification] || "#ef6b73";
 
-  const startPractice = () => {
-    setPractice({ moment: point, sourcePgn: game.pgn() });
-    goToMove(point.ply - 1, game);
-  };
-
-  const savePosition = () => {
-    if (saved) return;
-    const item: SavedPracticePosition = {
-      id: `${point.fen}-${point.ply}`,
-      savedAt: new Date().toISOString(),
-      pgn: game.pgn(),
-      moment: point,
-      solvedCount: 0,
-    };
-    setSavedPositions((current) => [item, ...current]);
-  };
+  const toPracticeContext = (): PracticeContext => ({
+    source: "turning-point",
+    ply: point.ply,
+    moveNumber: point.moveNumber,
+    color: point.color,
+    fen: point.fen,
+    playedSan: point.san,
+    playedUci: point.move,
+    bestMove: point.bestMove || point.alternatives[0]?.move || "",
+    bestMoveSan:
+      point.alternatives[0]?.san ||
+      point.principalVariationSan[0] ||
+      point.bestMove ||
+      "Best move",
+    evaluationBefore: point.evaluationBefore,
+    evaluationAfter: point.evaluationAfter,
+    evaluationChange: point.evaluationChange,
+    principalVariationSan: point.principalVariationSan,
+    principalVariation: point.principalVariation,
+    alternatives: point.alternatives,
+    whyItMatters: point.whyItMatters,
+    beforeSituation: point.beforeSituation,
+    afterSituation: point.afterSituation,
+    lesson: point.lesson,
+    opponentThreat: point.opponentThreat,
+    tacticalMotif: point.tacticalMotif,
+  });
 
   return (
     <Paper
       sx={{
-        p: 1.5,
-        borderLeft: "4px solid",
-        borderColor: point.color === "white" ? "#4ba3e3" : "#ef6b73",
-        bgcolor: "rgba(255,255,255,.035)",
+        p: 2,
+        borderLeft: `4px solid ${badgeColor}`,
+        bgcolor: "rgba(255,255,255,0.035)",
+        borderRadius: 2,
       }}
     >
-      <Stack spacing={1}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
-          <Stack direction="row" gap={0.75} flexWrap="wrap">
+      <Stack spacing={1.25}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          gap={1}
+        >
+          <Stack direction="row" gap={1} alignItems="center" flexWrap="wrap">
+            <InteractiveMoveChip
+              san={`${moveNumberStr} ${point.san}`}
+              ply={point.ply}
+              color={point.color}
+              size="medium"
+            />
             <Chip
               size="small"
-              label={`${point.moveNumber}${point.color === "white" ? "." : "..."} ${point.san}`}
-              color={point.color === "white" ? "info" : "error"}
+              label={
+                point.classification
+                  ? point.classification.toUpperCase()
+                  : "TURNING POINT"
+              }
+              sx={{
+                bgcolor: `${badgeColor}22`,
+                color: badgeColor,
+                fontWeight: 700,
+                fontSize: "0.7rem",
+              }}
             />
-            {point.classification && (
-              <Chip size="small" variant="outlined" label={point.classification} />
-            )}
-            {point.category && <Chip size="small" label={point.category} />}
-            {point.tacticalMotif && (
-              <Chip size="small" color="warning" label={point.tacticalMotif} />
-            )}
           </Stack>
-          <Button size="small" onClick={() => goToMove(point.ply, game)}>
-            View on board
-          </Button>
+
+          <Typography variant="caption" color="text.secondary" fontWeight={600}>
+            {Math.round(point.evaluationBefore)}% →{" "}
+            {Math.round(point.evaluationAfter)}%
+          </Typography>
         </Stack>
 
-        <Typography variant="body2">{point.explanation}</Typography>
-        <MoveComparison point={point} />
+        <Box>
+          <Typography variant="caption" color="text.secondary" fontWeight={700}>
+            WHY IT MATTERS:
+          </Typography>
+          <InteractiveChessText
+            text={point.whyItMatters || point.explanation}
+          />
+        </Box>
+
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          sx={{ p: 1, bgcolor: "rgba(0,0,0,0.2)", borderRadius: 1 }}
+        >
+          <Box flex={1}>
+            <Typography variant="caption" color="#8cdbac" fontWeight={700}>
+              BEFORE:
+            </Typography>
+            <InteractiveChessText
+              text={
+                point.beforeSituation ||
+                `Win chance was ${Math.round(point.evaluationBefore)}%.`
+              }
+            />
+          </Box>
+          <Divider orientation="vertical" flexItem />
+          <Box flex={1}>
+            <Typography variant="caption" color="#ef6b73" fontWeight={700}>
+              AFTER:
+            </Typography>
+            <InteractiveChessText
+              text={
+                point.afterSituation ||
+                `Win chance dropped to ${Math.round(point.evaluationAfter)}%.`
+              }
+            />
+          </Box>
+        </Stack>
 
         {point.opponentThreat && (
-          <Alert severity="warning" sx={{ py: 0 }}>
-            <Typography variant="caption" fontWeight={700}>
-              Opponent threat
-            </Typography>
-            <Typography variant="body2">{point.opponentThreat}</Typography>
+          <Alert severity="warning" sx={{ py: 0.25, fontSize: "0.8rem" }}>
+            <b>Threat:</b> {point.opponentThreat}
           </Alert>
         )}
 
-        <Stack direction="row" flexWrap="wrap" gap={0.5}>
-          <Button size="small" onClick={() => setShowDetails((value) => !value)}>
-            {showDetails ? "Hide coaching" : "What did I miss?"}
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          flexWrap="wrap"
+          gap={0.5}
+        >
+          <Typography variant="caption" color="text.secondary">
+            BETTER:
+          </Typography>
+          {point.alternatives.slice(0, 3).map((alt) => (
+            <InteractiveMoveChip
+              key={alt.san}
+              san={alt.san}
+              score={alt.score}
+              color={point.color}
+            />
+          ))}
+        </Stack>
+
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          pt={0.5}
+        >
+          <Button
+            size="small"
+            onClick={() => setShowDetails((val) => !val)}
+            sx={{
+              fontSize: "0.75rem",
+              textTransform: "none",
+              color: "text.secondary",
+            }}
+          >
+            {showDetails ? "Hide details" : "Coaching insight"}
           </Button>
-          <Button size="small" onClick={startPractice}>
-            Practice position
-          </Button>
-          <Button size="small" disabled={saved} onClick={savePosition}>
-            {saved ? "Saved to My Puzzles" : "Add to My Puzzles"}
+
+          <Button
+            size="small"
+            variant="contained"
+            onClick={() => startPractice(toPracticeContext())}
+            sx={{
+              bgcolor: "#238fc4",
+              fontWeight: 700,
+              fontSize: "0.75rem",
+              textTransform: "none",
+              "&:hover": { bgcolor: "#1a709c" },
+            }}
+          >
+            Practice Position
           </Button>
         </Stack>
 
         <Collapse in={showDetails}>
-          <Box pt={0.5}>
+          <Box
+            sx={{
+              p: 1.5,
+              mt: 0.5,
+              bgcolor: "rgba(0, 0, 0, 0.25)",
+              borderRadius: 1,
+            }}
+          >
             <Typography variant="body2" color="#8cdbac">
-              <b>What you missed:</b> {point.whatYouMissed || point.lesson}
-            </Typography>
-            <Typography variant="body2" mt={0.75}>
-              <b>Coaching takeaway:</b> {point.lesson}
+              <b>Coaching Takeaway:</b> {point.lesson}
             </Typography>
             {point.principalVariationSan.length > 0 && (
-              <Typography variant="caption" display="block" mt={0.75}>
-                Engine line: {point.principalVariationSan.join(" ")}
-              </Typography>
-            )}
-            {topOption && (
-              <Typography variant="caption" display="block" mt={0.5}>
-                Better move: {topOption}
+              <Typography
+                variant="caption"
+                display="block"
+                mt={0.5}
+                color="text.secondary"
+              >
+                <b>Engine Line:</b> {point.principalVariationSan.join(" ")}
               </Typography>
             )}
           </Box>
@@ -328,184 +667,447 @@ function TurningPointCard({
   );
 }
 
-function MoveComparison({
-  point,
-}: {
-  point: FinalGameReview["turningPoints"][number];
-}) {
-  const options = point.alternatives.slice(0, 3);
-  return (
-    <Box sx={{ p: 1, bgcolor: "rgba(0,0,0,.18)", borderRadius: 1 }}>
-      <Stack direction={{ xs: "column", sm: "row" }} gap={1} divider={<Divider flexItem orientation="vertical" />}>
-        <Box flex={1}>
-          <Typography variant="caption" color="text.secondary">YOUR MOVE</Typography>
-          <Typography fontWeight={700}>{point.san}</Typography>
-          <Typography variant="caption">Win chance: {Math.round(point.evaluationBefore)}% → {Math.round(point.evaluationAfter)}%</Typography>
-        </Box>
-        <Box flex={1}>
-          <Typography variant="caption" color="text.secondary">ENGINE OPTIONS</Typography>
-          <Stack direction="row" gap={0.5} flexWrap="wrap">
-            {options.map((option) => (
-              <Chip key={option.san} size="small" variant="outlined" label={`${option.san}${option.score === undefined ? "" : ` ${formatScore(option.score)}`}`} />
-            ))}
-          </Stack>
-        </Box>
-      </Stack>
-    </Box>
-  );
-}
-
-function PracticeTrainer() {
-  const board = useAtomValue(boardAtom);
-  const [practice, setPractice] = useAtom(activePracticeAtom);
-  const [savedPositions, setSavedPositions] = useAtom(savedPracticePositionsAtom);
-  const { goToMove } = useChessActions(boardAtom);
-  const [result, setResult] = useState<
-    "correct" | "alternative" | "other" | "solution"
-  >();
-
-  useEffect(() => setResult(undefined), [practice]);
-  if (!practice) return null;
-
-  const sourceGame = new Chess();
-  sourceGame.loadPgn(practice.sourcePgn);
-  const moveHistory = board.history({ verbose: true });
-  const attemptedMove = moveHistory.at(-1);
-  const hasAttempt = moveHistory.length === practice.moment.ply;
-  const attemptedUci = attemptedMove
-    ? attemptedMove.from + attemptedMove.to + (attemptedMove.promotion || "")
-    : undefined;
-  const recommendedMove = practice.moment.bestMove;
-  const recommendedSan = practice.moment.alternatives[0]?.san;
-
-  const restart = () => {
-    goToMove(practice.moment.ply - 1, sourceGame);
-    setResult(undefined);
-  };
-  const check = () => {
-    const matchingOption = practice.moment.alternatives.find(
-      (option) => option.move === attemptedUci
-    );
-    const topScore = practice.moment.alternatives[0]?.score;
-    const scoreLoss =
-      matchingOption?.score === undefined || topScore === undefined
-        ? undefined
-        : practice.moment.color === "white"
-          ? topScore - matchingOption.score
-          : matchingOption.score - topScore;
-
-    if (attemptedUci === recommendedMove) {
-      setResult("correct");
-    } else if (matchingOption && (scoreLoss === undefined || scoreLoss <= 40)) {
-      setResult("alternative");
-    } else {
-      setResult("other");
-    }
-  };
-  const markSolved = () => {
-    setSavedPositions((items) =>
-      items.map((item) =>
-        item.moment.fen === practice.moment.fen
-          ? { ...item, solvedCount: item.solvedCount + 1 }
-          : item
-      )
-    );
-  };
-
-  return (
-    <Alert severity="info" icon={false} sx={{ alignItems: "start" }}>
-      <Stack spacing={1} width="100%">
-        <Typography fontWeight={700}>
-          Practice position · {practice.moment.moveNumber}{practice.moment.color === "white" ? "." : "..."}
-        </Typography>
-        {!result && (
-          <Typography variant="body2">
-            The board is set just before the critical move. Find the strongest continuation before revealing the engine idea.
-          </Typography>
-        )}
-        {result === "correct" && (
-          <Typography variant="body2" color="#2e8b57">
-            Good work — your move matches Stockfish&apos;s top recommendation. {practice.moment.lesson}
-          </Typography>
-        )}
-        {result === "alternative" && (
-          <Typography variant="body2" color="#2e8b57">
-            Nice — that is a strong engine alternative. Compare it with the
-            top line to see the difference in plan.
-          </Typography>
-        )}
-        {result === "other" && (
-          <Typography variant="body2">
-            Your move was not Stockfish&apos;s top recommendation. Review the solution to compare the key idea.
-          </Typography>
-        )}
-        {result === "solution" && (
-          <Typography variant="body2">
-            <b>Best move:</b> {recommendedSan || "See the engine line below"}. {practice.moment.whatYouMissed || practice.moment.lesson}
-          </Typography>
-        )}
-        <Stack direction="row" gap={0.5} flexWrap="wrap">
-          <Button size="small" disabled={!hasAttempt} onClick={check}>Check my move</Button>
-          <Button size="small" onClick={() => setResult("solution")}>Reveal solution</Button>
-          <Button size="small" onClick={restart}>Try again</Button>
-          {(result === "correct" || result === "alternative") && <Button size="small" onClick={markSolved}>Mark solved</Button>}
-          <Button size="small" onClick={() => setPractice(undefined)}>Exit practice</Button>
-        </Stack>
-      </Stack>
-    </Alert>
-  );
-}
-
-function TrainingTab({ review }: { review: FinalGameReview }) {
-  const [savedPositions, setSavedPositions] = useAtom(savedPracticePositionsAtom);
-  const [, setPractice] = useAtom(activePracticeAtom);
-  const { goToMove } = useChessActions(boardAtom);
-
-  const startSavedPractice = (item: SavedPracticePosition) => {
-    const sourceGame = new Chess();
-    sourceGame.loadPgn(item.pgn);
-    setPractice({ moment: item.moment, sourcePgn: item.pgn } as PracticeSession);
-    goToMove(item.moment.ply - 1, sourceGame);
-  };
+// -------------------------------------------------------------
+// TAB 3: TACTICS — LEVEL 3 (Missed Tactical Opportunities)
+// -------------------------------------------------------------
+function TacticsTab({ review }: { review: FinalGameReview }) {
+  const tacticalOpportunities = review.tacticalOpportunities || [];
 
   return (
     <Stack spacing={2}>
-      <ListCard title="Focus areas" items={review.weaknesses} color="#f19a52" />
-      <ListCard title="Your next training steps" items={review.trainingRecommendations} color="#63c5f3" />
-      <Paper sx={{ p: 2, bgcolor: "rgba(255,255,255,.035)", borderTop: "3px solid #ecb951" }}>
-        <Stack spacing={1}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography fontWeight={800} color="#ecb951">My Puzzles</Typography>
-            <Chip size="small" label={savedPositions.length} />
-          </Stack>
-          {!savedPositions.length && <Typography variant="body2">Save an important turning point to practise it later.</Typography>}
-          {savedPositions.slice(0, 5).map((item) => (
-            <Stack key={item.id} direction="row" justifyContent="space-between" alignItems="center" gap={1}>
-              <Typography variant="body2">{item.moment.moveNumber}{item.moment.color === "white" ? "." : "..."} {item.moment.san}</Typography>
-              <Stack direction="row" gap={0.5}><Button size="small" onClick={() => startSavedPractice(item)}>Practice</Button><Button size="small" color="inherit" onClick={() => setSavedPositions((items) => items.filter((saved) => saved.id !== item.id))}>Remove</Button></Stack>
-            </Stack>
+      <Paper
+        sx={{
+          p: 2,
+          bgcolor: "rgba(255,255,255,0.035)",
+          borderTop: "3px solid #ecb951",
+        }}
+      >
+        <Typography fontWeight={800} color="#ecb951" mb={1}>
+          Tactical Analysis
+        </Typography>
+        <InteractiveChessText text={review.tacticalAnalysis.content} />
+      </Paper>
+
+      {tacticalOpportunities.length > 0 && (
+        <Stack spacing={1.5}>
+          <Typography
+            variant="subtitle2"
+            fontWeight={800}
+            color="text.secondary"
+          >
+            MISSED TACTICAL OPPORTUNITIES
+          </Typography>
+          {tacticalOpportunities.map((tactical) => (
+            <TacticalOpportunityCard key={tactical.ply} tactical={tactical} />
           ))}
         </Stack>
+      )}
+    </Stack>
+  );
+}
+
+function TacticalOpportunityCard({
+  tactical,
+}: {
+  tactical: TacticalOpportunity;
+}) {
+  const { startPractice } = useGameNavigation();
+  const [showSolution, setShowSolution] = useState(false);
+  const isWhite = tactical.color === "white";
+  const moveNumberStr = `${tactical.moveNumber}${isWhite ? "." : "..."}`;
+
+  const toPracticeContext = (): PracticeContext => ({
+    source: "tactic",
+    ply: tactical.ply,
+    moveNumber: tactical.moveNumber,
+    color: tactical.color,
+    fen: tactical.fen,
+    playedSan: tactical.san,
+    playedUci: tactical.move,
+    bestMove: tactical.bestMove,
+    bestMoveSan: tactical.bestMoveSan,
+    evaluationBefore: 50,
+    evaluationAfter: 20,
+    evaluationChange: -30,
+    principalVariationSan: tactical.principalVariationSan,
+    principalVariation: tactical.principalVariation,
+    alternatives: tactical.alternatives,
+    tacticalMotif: tactical.tacticalMotif,
+    opportunity: tactical.opportunity,
+    resultExplanation: tactical.resultExplanation,
+    lesson:
+      "When you have checks, captures, or loose pieces available, calculate forcing moves before quiet moves.",
+  });
+
+  return (
+    <Paper
+      sx={{
+        p: 2,
+        bgcolor: "rgba(255,255,255,0.035)",
+        borderLeft: "4px solid #ecb951",
+        borderRadius: 2,
+      }}
+    >
+      <Stack spacing={1.25}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="subtitle2" fontWeight={800} color="#ffffff">
+              Move {moveNumberStr}
+            </Typography>
+            <Chip
+              size="small"
+              label={tactical.tacticalMotif}
+              sx={{
+                bgcolor: "rgba(236, 185, 81, 0.15)",
+                color: "#ecb951",
+                fontWeight: 700,
+              }}
+            />
+          </Stack>
+        </Stack>
+
+        <Box sx={{ p: 1, bgcolor: "rgba(0,0,0,0.2)", borderRadius: 1 }}>
+          <Typography variant="caption" color="text.secondary">
+            YOU PLAYED:
+          </Typography>
+          <Box display="inline-block" ml={1}>
+            <InteractiveMoveChip
+              san={`${moveNumberStr} ${tactical.san}`}
+              ply={tactical.ply}
+              color={tactical.color}
+            />
+          </Box>
+
+          <Box mt={0.5}>
+            <Typography variant="caption" color="#48c78e" fontWeight={700}>
+              YOU COULD HAVE PLAYED:
+            </Typography>
+            <Box display="inline-block" ml={1}>
+              <InteractiveMoveChip
+                san={tactical.bestMoveSan}
+                color={tactical.color}
+              />
+            </Box>
+          </Box>
+        </Box>
+
+        <Box>
+          <Typography variant="caption" color="text.secondary" fontWeight={700}>
+            OPPORTUNITY:
+          </Typography>
+          <InteractiveChessText text={tactical.opportunity} />
+        </Box>
+
+        <Box>
+          <Typography variant="caption" color="text.secondary" fontWeight={700}>
+            RESULT:
+          </Typography>
+          <InteractiveChessText
+            text={tactical.resultExplanation || tactical.explanation}
+          />
+        </Box>
+
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          pt={0.5}
+        >
+          <Button
+            size="small"
+            onClick={() => setShowSolution((val) => !val)}
+            sx={{
+              fontSize: "0.75rem",
+              textTransform: "none",
+              color: "text.secondary",
+            }}
+          >
+            {showSolution ? "Hide solution" : "Show solution"}
+          </Button>
+
+          <Button
+            size="small"
+            variant="contained"
+            onClick={() => startPractice(toPracticeContext())}
+            sx={{
+              bgcolor: "#ecb951",
+              color: "#0d1a24",
+              fontWeight: 800,
+              fontSize: "0.75rem",
+              textTransform: "none",
+              "&:hover": { bgcolor: "#dba43f" },
+            }}
+          >
+            Practice Position
+          </Button>
+        </Stack>
+
+        <Collapse in={showSolution}>
+          <Box
+            sx={{
+              p: 1.5,
+              mt: 0.5,
+              bgcolor: "rgba(0, 0, 0, 0.25)",
+              borderRadius: 1,
+            }}
+          >
+            <Typography variant="caption" color="#48c78e" fontWeight={700}>
+              BEST MOVE:
+            </Typography>
+            <Box display="inline-block" ml={1}>
+              <InteractiveMoveChip
+                san={tactical.bestMoveSan}
+                color={tactical.color}
+              />
+            </Box>
+            <Typography variant="body2" mt={0.5} color="text.secondary">
+              <b>Idea:</b> {tactical.explanation}
+            </Typography>
+          </Box>
+        </Collapse>
+      </Stack>
+    </Paper>
+  );
+}
+
+// -------------------------------------------------------------
+// TAB 4: POSITION & STRATEGY
+// -------------------------------------------------------------
+function PositionTab({ review }: { review: FinalGameReview }) {
+  return (
+    <Stack spacing={2}>
+      <Paper
+        sx={{
+          p: 2,
+          bgcolor: "rgba(255,255,255,0.035)",
+          borderTop: "3px solid #bb9cf4",
+        }}
+      >
+        <Typography fontWeight={800} color="#bb9cf4" mb={1}>
+          Positional Analysis
+        </Typography>
+        <InteractiveChessText text={review.positionalAnalysis.content} />
+      </Paper>
+
+      <Paper
+        sx={{
+          p: 2,
+          bgcolor: "rgba(255,255,255,0.035)",
+          borderTop: "3px solid #63c5f3",
+        }}
+      >
+        <Typography fontWeight={800} color="#63c5f3" mb={1}>
+          Strategic Plans & Decisions
+        </Typography>
+        <InteractiveChessText text={review.strategicAnalysis.content} />
       </Paper>
     </Stack>
   );
 }
 
-function Narrative({ title, text, color }: { title: string; text: string; color: string }) {
-  const paragraphs = text.split("\n").filter(Boolean);
-  return <Paper sx={{ p: 2, bgcolor: "rgba(255,255,255,.035)", borderTop: `3px solid ${color}` }}><Typography fontWeight={800} color={color} mb={1}>{title}</Typography>{paragraphs.map((paragraph, index) => <Typography key={index} variant="body2" paragraph={index < paragraphs.length - 1}>{paragraph}</Typography>)}</Paper>;
+// -------------------------------------------------------------
+// TAB 5: STRENGTHS
+// -------------------------------------------------------------
+function StrengthsTab({ review }: { review: FinalGameReview }) {
+  return (
+    <Paper
+      sx={{
+        p: 2,
+        bgcolor: "rgba(255,255,255,0.035)",
+        borderTop: "3px solid #48c78e",
+      }}
+    >
+      <Typography fontWeight={800} color="#48c78e" mb={1.5}>
+        What You Did Well
+      </Typography>
+      <Stack spacing={1.5}>
+        {review.strengths.map((strength, index) => (
+          <Stack key={index} direction="row" spacing={1.5} alignItems="start">
+            <Typography color="#48c78e" fontWeight={800} lineHeight={1.6}>
+              ✓
+            </Typography>
+            <InteractiveChessText
+              text={strength.replace(/^(Improve:\s*|•\s*)/, "")}
+              typographyProps={{ sx: { flex: 1 } }}
+            />
+          </Stack>
+        ))}
+      </Stack>
+    </Paper>
+  );
 }
 
-function ListCard({ title, items, color }: { title: string; items: string[]; color: string }) {
-  return <Paper sx={{ p: 2, bgcolor: "rgba(255,255,255,.035)", borderTop: `3px solid ${color}` }}><Typography fontWeight={800} color={color} mb={1}>{title}</Typography><Stack spacing={1}>{items.map((item, index) => <Stack key={index} direction="row" gap={1}><Typography color={color}>●</Typography><Typography variant="body2">{item.replace(/^(Improve:\s*|•\s*)/, "")}</Typography></Stack>)}</Stack></Paper>;
+// -------------------------------------------------------------
+// TAB 6: TRAINING & NEXT STEPS
+// -------------------------------------------------------------
+function TrainingTab({ review }: { review: FinalGameReview }) {
+  const { startPractice } = useGameNavigation();
+
+  const toPracticeContext = (item: TurningPoint): PracticeContext => ({
+    source: "turning-point",
+    ply: item.ply,
+    moveNumber: item.moveNumber,
+    color: item.color,
+    fen: item.fen,
+    playedSan: item.san,
+    playedUci: item.move,
+    bestMove: item.bestMove || item.alternatives[0]?.move || "",
+    bestMoveSan:
+      item.alternatives[0]?.san ||
+      item.principalVariationSan[0] ||
+      item.bestMove ||
+      "Best move",
+    evaluationBefore: item.evaluationBefore,
+    evaluationAfter: item.evaluationAfter,
+    evaluationChange: item.evaluationChange,
+    principalVariationSan: item.principalVariationSan,
+    principalVariation: item.principalVariation,
+    alternatives: item.alternatives,
+    whyItMatters: item.whyItMatters,
+    beforeSituation: item.beforeSituation,
+    afterSituation: item.afterSituation,
+    lesson: item.lesson,
+    opponentThreat: item.opponentThreat,
+    tacticalMotif: item.tacticalMotif,
+  });
+
+  return (
+    <Stack spacing={2}>
+      <Paper
+        sx={{
+          p: 2,
+          bgcolor: "rgba(255,255,255,0.035)",
+          borderTop: "3px solid #f19a52",
+        }}
+      >
+        <Typography fontWeight={800} color="#f19a52" mb={1.5}>
+          Key Focus Areas
+        </Typography>
+        <Stack spacing={1}>
+          {review.weaknesses.map((weakness, index) => (
+            <Stack key={index} direction="row" spacing={1.5} alignItems="start">
+              <Typography color="#f19a52" fontWeight={800}>
+                ●
+              </Typography>
+              <InteractiveChessText
+                text={weakness.replace(/^(Improve:\s*|•\s*)/, "")}
+              />
+            </Stack>
+          ))}
+        </Stack>
+      </Paper>
+
+      <Paper
+        sx={{
+          p: 2,
+          bgcolor: "rgba(255,255,255,0.035)",
+          borderTop: "3px solid #63c5f3",
+        }}
+      >
+        <Typography fontWeight={800} color="#63c5f3" mb={1.5}>
+          Recommended Training Steps
+        </Typography>
+        <Stack spacing={1}>
+          {review.trainingRecommendations.map((rec, index) => (
+            <Stack key={index} direction="row" spacing={1.5} alignItems="start">
+              <Typography color="#63c5f3" fontWeight={800}>
+                →
+              </Typography>
+              <InteractiveChessText
+                text={rec.replace(/^(Improve:\s*|•\s*)/, "")}
+              />
+            </Stack>
+          ))}
+        </Stack>
+      </Paper>
+
+      {review.turningPoints.length > 0 && (
+        <Paper
+          sx={{
+            p: 2,
+            bgcolor: "rgba(255,255,255,0.035)",
+            borderTop: "3px solid #ef6b73",
+          }}
+        >
+          <Typography fontWeight={800} color="#ef6b73" mb={1.5}>
+            Replay Critical Mistakes
+          </Typography>
+          <Stack spacing={1}>
+            {review.turningPoints.slice(0, 4).map((item) => (
+              <Stack
+                key={item.ply}
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                sx={{
+                  p: 1,
+                  borderRadius: 1,
+                  bgcolor: "rgba(255,255,255,0.02)",
+                }}
+              >
+                <InteractiveMoveChip
+                  san={`${item.moveNumber}${item.color === "white" ? "." : "..."} ${item.san}`}
+                  ply={item.ply}
+                  color={item.color}
+                />
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => startPractice(toPracticeContext(item))}
+                  sx={{
+                    fontSize: "0.75rem",
+                    textTransform: "none",
+                    borderColor: "#63c5f3",
+                    color: "#63c5f3",
+                  }}
+                >
+                  Practice Position
+                </Button>
+              </Stack>
+            ))}
+          </Stack>
+        </Paper>
+      )}
+    </Stack>
+  );
 }
 
 function EmptyState() {
-  return <Paper sx={{ p: 2, bgcolor: "rgba(255,255,255,.035)" }}><Typography fontWeight={700} mb={1}>A focused coaching breakdown</Typography><Stack spacing={0.5}><Typography variant="body2">• Critical mistakes and their impact</Typography><Typography variant="body2">• Turning points you can jump to on the board</Typography><Typography variant="body2">• Tactical themes and practical training steps</Typography></Stack></Paper>;
+  return (
+    <Paper sx={{ p: 2.5, bgcolor: "rgba(255,255,255,0.035)", borderRadius: 2 }}>
+      <Typography variant="subtitle1" fontWeight={800} color="#63c5f3" mb={1}>
+        Interactive AI Master Coaching
+      </Typography>
+      <Stack spacing={0.75}>
+        <Typography variant="body2" color="text.secondary">
+          • Instant master-level review of critical mistakes and turning points
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          • Interactive Practice Mode to calculate better moves directly on the
+          board
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          • Synchronized analysis with clickable moves and tactical insights
+        </Typography>
+      </Stack>
+    </Paper>
+  );
 }
 
 function LoadingState() {
-  return <Stack spacing={1.25} flex={1} justifyContent="center"><Typography color="primary.light" fontWeight={700}>Analyzing your game…</Typography><Skeleton variant="rounded" height={18} /><Skeleton variant="rounded" height={18} width="78%" /><Skeleton variant="rounded" height={18} width="90%" /><Skeleton variant="rounded" height={84} /></Stack>;
+  return (
+    <Stack spacing={1.5} flex={1} justifyContent="center" p={2}>
+      <Typography color="primary.light" fontWeight={700}>
+        Generating coach insights from Stockfish analysis…
+      </Typography>
+      <Skeleton variant="rounded" height={22} />
+      <Skeleton variant="rounded" height={22} width="80%" />
+      <Skeleton variant="rounded" height={22} width="92%" />
+      <Skeleton variant="rounded" height={90} />
+    </Stack>
+  );
 }
-
-const formatScore = (score: number) => `${score >= 0 ? "+" : ""}${(score / 100).toFixed(1)}`;

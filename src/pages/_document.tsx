@@ -4,12 +4,25 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
+        <link rel="icon" type="image/x-icon" href="/favicon-32x32.png" />
         <link
-          rel="apple-touch-icon"
+          rel="icon"
+          type="image/png"
           sizes="180x180"
-          href="/apple-touch-icon.png"
+          href="/favicon-32x32.png"
         />
-        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="128x128"
+          href="/favicon-32x32.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="64x64"
+          href="/favicon-32x32.png"
+        />
         <link
           rel="icon"
           type="image/png"
@@ -20,7 +33,7 @@ export default function Document() {
           rel="icon"
           type="image/png"
           sizes="16x16"
-          href="/favicon-16x16.png"
+          href="/favicon-32x32.png"
         />
         <meta
           name="description"
@@ -28,9 +41,9 @@ export default function Document() {
         />
 
         {/* OG (Social networks) */}
-        <meta property="og:title" content="chesskit.org" />
+        <meta property="og:title" content="ChessAi" />
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="chesskit.org" />
+        <meta property="og:site_name" content="ChessAi" />
         <meta property="og:url" content="https://chesskit.org/" />
         <meta
           property="og:image"
@@ -42,7 +55,7 @@ export default function Document() {
         />
 
         {/* Twitter */}
-        <meta name="twitter:title" content="chesskit.org" />
+        <meta name="twitter:title" content="ChessAi" />
         <meta name="twitter:domain" content="chesskit.org" />
         <meta name="twitter:url" content="https://chesskit.org/" />
         <meta

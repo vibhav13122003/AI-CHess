@@ -61,9 +61,10 @@ export default function NavBar({ darkMode, switchDarkMode }: Props) {
 
           <Image
             src="/favicon-32x32.png"
-            alt="Chesskit logo"
-            width={32}
-            height={32}
+            alt="ChessAi logo"
+            width={40}
+            height={40}
+            style={{ width: 40, height: 40 }}
           />
 
           <NavLink href="/">
@@ -76,7 +77,7 @@ export default function NavBar({ darkMode, switchDarkMode }: Props) {
                 fontSize: { xs: "1rem", sm: "1.25rem" },
               }}
             >
-              Chesskit
+              ChessAi
             </Typography>
           </NavLink>
 

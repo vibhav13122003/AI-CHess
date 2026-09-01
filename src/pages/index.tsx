@@ -39,7 +39,7 @@ export default function GameAnalysis() {
 
   return (
     <Grid container gap={4} justifyContent="space-evenly" alignItems="start">
-      <PageTitle title="Chesskit Game Analysis" />
+      <PageTitle title="ChessAi Game Analysis" />
 
       <Board />
 

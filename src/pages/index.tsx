@@ -3,7 +3,12 @@ import PanelHeader from "@/sections/analysis/panelHeader";
 import PanelToolBar from "@/sections/analysis/panelToolbar";
 import AnalysisTab from "@/sections/analysis/panelBody/analysisTab";
 import ClassificationTab from "@/sections/analysis/panelBody/classificationTab";
-import { boardAtom, gameAtom, gameEvalAtom } from "@/sections/analysis/states";
+import {
+  activePracticeAtom,
+  boardAtom,
+  gameAtom,
+  gameEvalAtom,
+} from "@/sections/analysis/states";
 import {
   Box,
   Divider,
@@ -29,13 +34,20 @@ export default function GameAnalysis() {
   const gameEval = useAtomValue(gameEvalAtom);
   const game = useAtomValue(gameAtom);
   const board = useAtomValue(boardAtom);
+  const practice = useAtomValue(activePracticeAtom);
 
   const showMovesTab = game.history().length > 0 || board.history().length > 0;
 
   useEffect(() => {
+    if (practice?.isActive) {
+      setTab(3);
+    }
+  }, [practice?.isActive]);
+
+  useEffect(() => {
     if (tab === 1 && !showMovesTab) setTab(0);
-    if ((tab === 2 || tab === 3) && !gameEval) setTab(0);
-  }, [showMovesTab, gameEval, tab]);
+    if ((tab === 2 || tab === 3) && !gameEval && !practice?.isActive) setTab(0);
+  }, [showMovesTab, gameEval, tab, practice?.isActive]);
 
   return (
     <Grid container gap={4} justifyContent="space-evenly" alignItems="start">
@@ -92,81 +104,73 @@ export default function GameAnalysis() {
             marginX: { sm: "5%", xs: undefined },
           }}
         >
-            <Tabs
-              value={tab}
-              onChange={(_, newValue) => setTab(newValue)}
-              aria-label="basic tabs example"
-              variant="fullWidth"
-              sx={{ minHeight: 0 }}
-            >
-              <Tab
-                label="Analysis"
-                id="tab0"
-                icon={<Icon icon="mdi:magnify" height={15} />}
-                iconPosition="start"
-                sx={{
-                  textTransform: "none",
-                  minHeight: 15,
-                  padding: "5px 0em 12px",
-                }}
-                disableFocusRipple
-              />
+          <Tabs
+            value={tab}
+            onChange={(_, newValue) => setTab(newValue)}
+            aria-label="basic tabs example"
+            variant="fullWidth"
+            sx={{ minHeight: 0 }}
+          >
+            <Tab
+              label="Analysis"
+              id="tab0"
+              icon={<Icon icon="mdi:magnify" height={15} />}
+              iconPosition="start"
+              sx={{
+                textTransform: "none",
+                minHeight: 15,
+                padding: "5px 0em 12px",
+              }}
+              disableFocusRipple
+            />
 
-              <Tab
-                label="Moves"
-                id="tab1"
-                icon={<Icon icon="mdi:format-list-bulleted" height={15} />}
-                iconPosition="start"
-                sx={{
-                  textTransform: "none",
-                  minHeight: 15,
-                  display: showMovesTab ? undefined : "none",
-                  padding: "5px 0em 12px",
-                }}
-                disableFocusRipple
-              />
+            <Tab
+              label="Moves"
+              id="tab1"
+              icon={<Icon icon="mdi:format-list-bulleted" height={15} />}
+              iconPosition="start"
+              sx={{
+                textTransform: "none",
+                minHeight: 15,
+                display: showMovesTab ? undefined : "none",
+                padding: "5px 0em 12px",
+              }}
+              disableFocusRipple
+            />
 
-              <Tab
-                label="Graph"
-                id="tab2"
-                icon={<Icon icon="mdi:chart-line" height={15} />}
-                iconPosition="start"
-                sx={{
-                  textTransform: "none",
-                  minHeight: 15,
-                  display: gameEval ? undefined : "none",
-                  padding: "5px 0em 12px",
-                }}
-                disableFocusRipple
-              />
+            <Tab
+              label="Graph"
+              id="tab2"
+              icon={<Icon icon="mdi:chart-line" height={15} />}
+              iconPosition="start"
+              sx={{
+                textTransform: "none",
+                minHeight: 15,
+                display: gameEval ? undefined : "none",
+                padding: "5px 0em 12px",
+              }}
+              disableFocusRipple
+            />
 
-              <Tab
-                label="AI Review"
-                id="tab3"
-                icon={<Icon icon="mdi:sparkles" height={15} />}
-                iconPosition="start"
-                sx={{
-                  textTransform: "none",
-                  minHeight: 15,
-                  display: gameEval ? undefined : "none",
-                  padding: "5px 0em 12px",
-                }}
-                disableFocusRipple
-              />
-            </Tabs>
-          </Box>
+            <Tab
+              label="AI Review"
+              id="tab3"
+              icon={<Icon icon="mdi:sparkles" height={15} />}
+              iconPosition="start"
+              sx={{
+                textTransform: "none",
+                minHeight: 15,
+                display: gameEval ? undefined : "none",
+                padding: "5px 0em 12px",
+              }}
+              disableFocusRipple
+            />
+          </Tabs>
+        </Box>
 
-        <GraphTab
-          role="tabpanel"
-          hidden={tab !== 2}
-          id="tabContent2"
-        />
+        <GraphTab role="tabpanel" hidden={tab !== 2} id="tabContent2" />
 
-        <AnalysisTab
-          role="tabpanel"
-          hidden={tab !== 0}
-          id="tabContent0"
-        />
+        <AnalysisTab role="tabpanel" hidden={tab !== 0} id="tabContent0" />
 
         <ClassificationTab
           role="tabpanel"

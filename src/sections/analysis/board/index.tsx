@@ -1,5 +1,6 @@
 import { useAtomValue } from "jotai";
 import {
+  activePracticeAtom,
   boardAtom,
   boardOrientationAtom,
   currentPositionAtom,
@@ -17,6 +18,7 @@ export default function BoardContainer() {
   const screenSize = useScreenSize();
   const boardOrientation = useAtomValue(boardOrientationAtom);
   const showBestMoveArrow = useAtomValue(showBestMoveArrowAtom);
+  const practice = useAtomValue(activePracticeAtom);
   const { white, black } = usePlayersData(gameAtom);
 
   const boardSize = useMemo(() => {
@@ -31,17 +33,25 @@ export default function BoardContainer() {
     return Math.min(width - 700, height * 0.92);
   }, [screenSize]);
 
+  const canPlay = practice?.isActive
+    ? practice.status !== "solution"
+      ? practice.context.color === "white"
+        ? Color.White
+        : Color.Black
+      : false
+    : true;
+
   return (
     <Board
       id="AnalysisBoard"
       boardSize={boardSize}
-      canPlay={true}
+      canPlay={canPlay}
       gameAtom={boardAtom}
       whitePlayer={white}
       blackPlayer={black}
       boardOrientation={boardOrientation ? Color.White : Color.Black}
       currentPositionAtom={currentPositionAtom}
-      showBestMoveArrow={showBestMoveArrow}
+      showBestMoveArrow={practice?.isActive ? false : showBestMoveArrow}
       showPlayerMoveIconAtom={showPlayerMoveIconAtom}
       showEvaluationBar={true}
     />

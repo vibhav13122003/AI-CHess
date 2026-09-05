@@ -93,6 +93,16 @@ export interface PracticeCheckResult {
   coachingInsight: string;
 }
 
+export interface DrillQueueItem {
+  gameId: number;
+  ply: number;
+}
+
+export interface PracticeOrigin {
+  pathname: string;
+  query?: Record<string, string>;
+}
+
 export interface PracticeState {
   isActive: boolean;
   context: PracticeContext;
@@ -101,6 +111,10 @@ export interface PracticeState {
   attemptedMove?: PracticeAttempt;
   status: "ready" | "attempted" | "checked" | "solution";
   checkResult?: PracticeCheckResult;
+  drillQueue?: DrillQueueItem[];
+  drillIndex?: number;
+  drillThemeTitle?: string;
+  origin?: PracticeOrigin;
 }
 
 export interface GameAnalysisContext {

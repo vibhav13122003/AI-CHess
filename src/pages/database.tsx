@@ -1,4 +1,4 @@
-import { Grid2 as Grid, Typography } from "@mui/material";
+import { Button, Grid2 as Grid, Typography } from "@mui/material";
 import { Icon } from "@iconify/react";
 import {
   DataGrid,
@@ -180,8 +180,27 @@ export default function GameDatabase() {
     >
       <PageTitle title="ChessAI Game Database" />
 
-      <Grid container justifyContent="center" alignItems="center" size={12}>
+      <Grid
+        container
+        justifyContent="center"
+        alignItems="center"
+        gap={2}
+        size={12}
+      >
         <LoadGameButton />
+        <Button
+          variant="contained"
+          onClick={() => router.push("/curriculum")}
+          startIcon={<Icon icon="streamline:graduation-cap-solid" />}
+          sx={{
+            bgcolor: "#238fc4",
+            "&:hover": { bgcolor: "#1a709c" },
+            fontWeight: 700,
+            textTransform: "none",
+          }}
+        >
+          Train Recurring Mistakes
+        </Button>
       </Grid>
 
       <Grid container justifyContent="center" alignItems="center" size={12}>

@@ -1,15 +1,18 @@
 import { useCallback } from "react";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   activePracticeAtom,
   boardAtom,
+  boardOrientationAtom,
   currentPositionAtom,
   gameAtom,
 } from "@/sections/analysis/states";
 import { useChessActions } from "@/hooks/useChessActions";
 import {
+  DrillQueueItem,
   PracticeCheckResult,
   PracticeContext,
+  PracticeOrigin,
   PracticeState,
 } from "@/types/ai";
 import { formatUciPv } from "@/lib/chess";
@@ -20,6 +23,7 @@ export const useGameNavigation = () => {
   const board = useAtomValue(boardAtom);
   const currentPosition = useAtomValue(currentPositionAtom);
   const [practice, setPractice] = useAtom(activePracticeAtom);
+  const setBoardOrientation = useSetAtom(boardOrientationAtom);
   const { goToMove } = useChessActions(boardAtom);
 
   const goToPly = useCallback(
@@ -34,27 +38,62 @@ export const useGameNavigation = () => {
   );
 
   const startPractice = useCallback(
-    (context: PracticeContext) => {
+    (
+      context: PracticeContext,
+      sourceGame?: Chess,
+      drillOptions?: {
+        queue?: DrillQueueItem[];
+        index?: number;
+        themeTitle?: string;
+        origin?: PracticeOrigin;
+      }
+    ) => {
+      const g = sourceGame || (game.history().length > 0 ? game : board);
       const savedPly =
         currentPosition?.currentMoveIdx ?? board.history().length;
       const practiceState: PracticeState = {
         isActive: true,
         context,
-        sourcePgn: game.pgn(),
+        sourcePgn: g.history().length > 0 ? g.pgn() : "",
         savedPly,
         status: "ready",
+        drillQueue: drillOptions?.queue,
+        drillIndex: drillOptions?.index ?? 0,
+        drillThemeTitle: drillOptions?.themeTitle,
+        origin: drillOptions?.origin,
       };
       setPractice(practiceState);
-      goToMove(context.ply - 1, game);
+      setBoardOrientation(context.color === "white");
+      goToMove(context.ply - 1, g, true);
     },
-    [board, currentPosition, game, goToMove, setPractice]
+    [board, currentPosition, game, goToMove, setPractice, setBoardOrientation]
   );
 
   const exitPractice = useCallback(() => {
     if (practice) {
-      goToMove(practice.savedPly, game);
+      goToMove(practice.savedPly, game, true);
       setPractice(undefined);
     }
+  }, [game, goToMove, practice, setPractice]);
+
+  const retryPracticeMove = useCallback(() => {
+    if (!practice) return;
+    const sourceGame = new Chess();
+    if (practice.sourcePgn) {
+      sourceGame.loadPgn(practice.sourcePgn);
+    }
+    const g = sourceGame.history().length > 0 ? sourceGame : game;
+    goToMove(practice.context.ply - 1, g, true);
+    setPractice((prev) =>
+      prev
+        ? {
+            ...prev,
+            attemptedMove: undefined,
+            status: "ready",
+            checkResult: undefined,
+          }
+        : undefined
+    );
   }, [game, goToMove, practice, setPractice]);
 
   const checkPracticeMove = useCallback(() => {
@@ -309,6 +348,7 @@ export const useGameNavigation = () => {
     goToPly,
     startPractice,
     exitPractice,
+    retryPracticeMove,
     checkPracticeMove,
     revealSolution,
     previewVariation,

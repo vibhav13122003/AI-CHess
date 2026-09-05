@@ -1,6 +1,6 @@
-import { Stack, useMediaQuery } from "@mui/material";
+import { Stack, Theme, useMediaQuery } from "@mui/material";
 import { useAtomValue } from "jotai";
-import { boardAtom } from "../states";
+import { activePracticeAtom, boardAtom } from "../states";
 import { useChessActions } from "@/hooks/useChessActions";
 import FlipBoardButton from "./flipBoardButton";
 import NextMoveButton from "./nextMoveButton";
@@ -12,6 +12,7 @@ import { CopyPgnButton } from "./copyPgnButton";
 
 export default function PanelToolBar() {
   const board = useAtomValue(boardAtom);
+  const practice = useAtomValue(activePracticeAtom);
   const { resetToStartingPosition: resetBoard, undoMove: undoBoardMove } =
     useChessActions(boardAtom);
 
@@ -19,7 +20,7 @@ export default function PanelToolBar() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (boardHistory.length === 0) return;
+      if (practice?.isActive || boardHistory.length === 0) return;
       if (e.key === "ArrowLeft") {
         undoBoardMove();
       } else if (e.key === "ArrowDown") {
@@ -32,9 +33,11 @@ export default function PanelToolBar() {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [undoBoardMove, boardHistory, resetBoard, board]);
+  }, [undoBoardMove, boardHistory, resetBoard, practice?.isActive]);
 
-  const isSmOrGreater = useMediaQuery((theme) => theme.breakpoints.up("sm"));
+  const isSmOrGreater = useMediaQuery((theme: Theme) =>
+    theme.breakpoints.up("sm")
+  );
 
   return (
     <>
@@ -51,14 +54,14 @@ export default function PanelToolBar() {
           tooltip="Reset board"
           onClick={() => resetBoard()}
           icon="ri:skip-back-line"
-          disabled={boardHistory.length === 0}
+          disabled={boardHistory.length === 0 || practice?.isActive}
         />
 
         <ToolbarButton
           tooltip="Go to previous move"
           onClick={() => undoBoardMove()}
           icon="ri:arrow-left-s-line"
-          disabled={boardHistory.length === 0}
+          disabled={boardHistory.length === 0 || practice?.isActive}
           iconHeight={30}
         />
 

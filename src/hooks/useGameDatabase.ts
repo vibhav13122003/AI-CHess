@@ -17,6 +17,16 @@ interface GameDatabaseSchema extends DBSchema {
 const gamesAtom = atom<Game[]>([]);
 const fetchGamesAtom = atom<boolean>(false);
 
+// Global in-flight lock to prevent concurrent duplicate saves
+const inFlightSaves = new Map<string, Promise<number>>();
+
+export const normalizePgn = (pgn: string): string => {
+  return pgn
+    .replace(/\r\n/g, "\n")
+    .replace(/\[Date\s+"[^"]*"\]/g, "")
+    .trim();
+};
+
 export const useGameDatabase = (shouldFetchGames?: boolean) => {
   const [db, setDb] = useState<IDBPDatabase<GameDatabaseSchema> | null>(null);
   const [games, setGames] = useAtom(gamesAtom);
@@ -54,15 +64,68 @@ export const useGameDatabase = (shouldFetchGames?: boolean) => {
   }, [loadGames]);
 
   const addGame = useCallback(
-    async (game: Chess) => {
+    async (game: Chess, gameEval?: GameEval): Promise<number> => {
       if (!db) throw new Error("Database not initialized");
 
       const gameToAdd = formatGameToDatabase(game);
-      const gameId = await db.add("games", gameToAdd as Game);
+      if (gameEval) {
+        (gameToAdd as Game).eval = gameEval;
+      }
 
-      loadGames();
+      const normPgn = normalizePgn(gameToAdd.pgn);
+      const gameMoves = game.history().join(" ");
 
-      return gameId;
+      // Check if a save for this exact PGN is already in progress
+      const inFlight = inFlightSaves.get(normPgn);
+      if (inFlight) {
+        return inFlight;
+      }
+
+      const savePromise = (async () => {
+        try {
+          const allGames = await db.getAll("games");
+          const existingMatch = allGames.find((existing) => {
+            if (!existing?.pgn) return false;
+            if (normalizePgn(existing.pgn) === normPgn) return true;
+
+            try {
+              const existingChess = new Chess();
+              existingChess.loadPgn(existing.pgn);
+              const existingMoves = existingChess.history().join(" ");
+              if (existingMoves && existingMoves === gameMoves) {
+                const whiteMatches =
+                  (existing.white?.name || "").toLowerCase().trim() ===
+                  (gameToAdd.white?.name || "").toLowerCase().trim();
+                const blackMatches =
+                  (existing.black?.name || "").toLowerCase().trim() ===
+                  (gameToAdd.black?.name || "").toLowerCase().trim();
+                if (whiteMatches && blackMatches) return true;
+              }
+            } catch {
+              // ignore
+            }
+            return false;
+          });
+
+          if (existingMatch) {
+            // If the incoming game has eval data and the stored one doesn't, update it
+            if (gameEval && !existingMatch.eval) {
+              await db.put("games", { ...existingMatch, eval: gameEval });
+              loadGames();
+            }
+            return existingMatch.id;
+          }
+
+          const gameId = await db.add("games", gameToAdd as Game);
+          loadGames();
+          return gameId;
+        } finally {
+          inFlightSaves.delete(normPgn);
+        }
+      })();
+
+      inFlightSaves.set(normPgn, savePromise);
+      return savePromise;
     },
     [db, loadGames]
   );

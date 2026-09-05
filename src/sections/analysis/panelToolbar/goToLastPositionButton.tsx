@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { boardAtom, gameAtom } from "../states";
+import { activePracticeAtom, boardAtom, gameAtom } from "../states";
 import { useChessActions } from "@/hooks/useChessActions";
 import { useEffect } from "react";
 import { ToolbarButton } from "@/components/ToolbarButton";
@@ -8,11 +8,13 @@ export default function GoToLastPositionButton() {
   const { setPgn: setBoardPgn } = useChessActions(boardAtom);
   const game = useAtomValue(gameAtom);
   const board = useAtomValue(boardAtom);
+  const practice = useAtomValue(activePracticeAtom);
 
   const gameHistory = game.history();
   const boardHistory = board.history();
 
-  const isButtonDisabled = boardHistory >= gameHistory;
+  const isButtonDisabled =
+    practice?.isActive || boardHistory.length >= gameHistory.length;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {

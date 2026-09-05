@@ -1,3 +1,5 @@
+"use no memo";
+
 import { getGameFromPgn, setGameHeaders } from "@/lib/chess";
 import { playIllegalMoveSound, playSoundFromMove } from "@/lib/sounds";
 import { Player } from "@/types/game";
@@ -110,22 +112,26 @@ export const useChessActions = (chessAtom: PrimitiveAtom<Chess>) => {
   }, [copyGame, setGame]);
 
   const goToMove = useCallback(
-    (moveIdx: number, fullGame: Chess) => {
+    (moveIdx: number, fullGame: Chess, skipSound?: boolean) => {
       if (moveIdx < 0) return;
 
       const newGame = new Chess();
-      newGame.loadPgn(fullGame.pgn());
+      const historyMoves = fullGame.history({ verbose: true });
+      const movesNb = historyMoves.length;
 
-      const movesNb = fullGame.history().length;
-      if (moveIdx > movesNb) return;
+      if (movesNb === 0) {
+        setGame(newGame);
+        return;
+      }
 
-      let lastMove: Move | null = {} as Move;
-      for (let i = movesNb; i > moveIdx; i--) {
-        lastMove = newGame.undo();
+      const targetIdx = Math.min(moveIdx, movesNb);
+      let lastMove: Move | null = null;
+      for (let i = 0; i < targetIdx; i++) {
+        lastMove = newGame.move(historyMoves[i]);
       }
 
       setGame(newGame);
-      playSoundFromMove(lastMove);
+      if (lastMove && !skipSound) playSoundFromMove(lastMove);
     },
     [setGame]
   );

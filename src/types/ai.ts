@@ -100,6 +100,8 @@ export interface DrillQueueItem {
 
 export interface PracticeOrigin {
   pathname: string;
+  username?: string;
+  patternType?: string;
   query?: Record<string, string>;
 }
 

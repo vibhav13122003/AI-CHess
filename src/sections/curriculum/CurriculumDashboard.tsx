@@ -93,8 +93,12 @@ export default function CurriculumDashboard() {
     if (!router.isReady) return;
     const qUser = router.query.username;
     if (typeof qUser === "string" && qUser.trim()) {
-      setSearchedUsername(qUser.trim());
-      setUsernameInput(qUser.trim());
+      let decoded = qUser.trim();
+      try {
+        decoded = decodeURIComponent(decoded);
+      } catch {}
+      setSearchedUsername(decoded);
+      setUsernameInput(decoded);
     }
     const qCat = router.query.category;
     if (
@@ -235,6 +239,8 @@ export default function CurriculumDashboard() {
           index: 0,
           origin: {
             pathname: "/curriculum",
+            username: searchedUsername,
+            patternType: pattern.typeId,
             query: originQuery,
           },
         })
@@ -499,7 +505,7 @@ export default function CurriculumDashboard() {
             <Chip
               size="small"
               icon={<Icon icon="mdi:account-check" />}
-              label={`${summary.identifiedGamesCount} games identified as yours`}
+              label={`${summary.identifiedGamesCount} matching games (${summary.whiteGamesCount} as White, ${summary.blackGamesCount} as Black)`}
               sx={{
                 bgcolor: "rgba(99, 197, 243, 0.15)",
                 color: "#63c5f3",

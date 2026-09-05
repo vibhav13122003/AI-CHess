@@ -111,6 +111,7 @@ export default function PracticeMode() {
       ) {
         nextQuery.origin = "curriculum";
         const u =
+          practice.origin?.username ||
           practice.origin?.query?.username ||
           (typeof router.query.username === "string"
             ? router.query.username
@@ -121,12 +122,13 @@ export default function PracticeMode() {
             ? router.query.category
             : "");
         const p =
+          practice.origin?.patternType ||
           practice.origin?.query?.pattern ||
           (typeof router.query.pattern === "string"
             ? router.query.pattern
             : "");
         if (u) nextQuery.username = u;
-        if (c) nextQuery.category = c;
+        if (c && c !== "all") nextQuery.category = c;
         if (p) nextQuery.pattern = p;
       }
       router.push({
@@ -140,48 +142,90 @@ export default function PracticeMode() {
     if (typeof window !== "undefined") {
       localStorage.removeItem("active-curriculum-drill");
     }
+
     const origin = practice?.origin;
-    exitPractice();
-    if (origin && origin.pathname === "/curriculum") {
-      router.push({ pathname: "/curriculum", query: origin.query || {} });
-      return;
+    const username =
+      origin?.username ||
+      origin?.query?.username ||
+      (typeof router.query.username === "string" ? router.query.username : "");
+
+    const query: Record<string, string> = {};
+    if (username) {
+      query.username = username;
     }
-    if (router.query.origin === "curriculum") {
-      const q: Record<string, string> = {};
-      if (typeof router.query.username === "string")
-        q.username = router.query.username;
-      if (typeof router.query.category === "string")
-        q.category = router.query.category;
-      if (typeof router.query.pattern === "string")
-        q.pattern = router.query.pattern;
-      router.push({ pathname: "/curriculum", query: q });
-      return;
+    const category =
+      origin?.query?.category ||
+      (typeof router.query.category === "string" ? router.query.category : "");
+    if (category && category !== "all") {
+      query.category = category;
     }
-    router.push("/curriculum");
+    const pattern =
+      origin?.patternType ||
+      origin?.query?.pattern ||
+      (typeof router.query.pattern === "string" ? router.query.pattern : "");
+    if (pattern) {
+      query.pattern = pattern;
+    }
+
+    setPractice(undefined);
+    router.push({
+      pathname: "/curriculum",
+      query,
+    });
   };
 
   const handleExitPractice = () => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("active-curriculum-drill");
     }
-    const origin = practice?.origin;
-    exitPractice();
 
-    if (origin && origin.pathname === "/curriculum") {
-      router.push({ pathname: "/curriculum", query: origin.query || {} });
+    // 1. Read practice origin FIRST
+    const origin = practice?.origin;
+    const isCurriculum =
+      origin?.pathname === "/curriculum" ||
+      router.query.origin === "curriculum";
+
+    if (isCurriculum) {
+      const username =
+        origin?.username ||
+        origin?.query?.username ||
+        (typeof router.query.username === "string"
+          ? router.query.username
+          : "");
+
+      const query: Record<string, string> = {};
+      if (username) {
+        query.username = username;
+      }
+      const category =
+        origin?.query?.category ||
+        (typeof router.query.category === "string"
+          ? router.query.category
+          : "");
+      if (category && category !== "all") {
+        query.category = category;
+      }
+      const pattern =
+        origin?.patternType ||
+        origin?.query?.pattern ||
+        (typeof router.query.pattern === "string" ? router.query.pattern : "");
+      if (pattern) {
+        query.pattern = pattern;
+      }
+
+      // 2. Clear practice state without restoring game board on /
+      setPractice(undefined);
+
+      // 3. Navigate directly to /curriculum with preserved parameters
+      router.push({
+        pathname: "/curriculum",
+        query,
+      });
       return;
     }
-    if (router.query.origin === "curriculum") {
-      const q: Record<string, string> = {};
-      if (typeof router.query.username === "string")
-        q.username = router.query.username;
-      if (typeof router.query.category === "string")
-        q.category = router.query.category;
-      if (typeof router.query.pattern === "string")
-        q.pattern = router.query.pattern;
-      router.push({ pathname: "/curriculum", query: q });
-      return;
-    }
+
+    // Standard analysis exit (non-curriculum)
+    exitPractice();
 
     if (router.query.practice) {
       router.replace(

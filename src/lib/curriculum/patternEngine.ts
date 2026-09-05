@@ -692,6 +692,8 @@ export function analyzeSavedGamesForCurriculum(
 
   const allInstances: PatternInstance[] = [];
   let identifiedGamesCount = 0;
+  let whiteGamesCount = 0;
+  let blackGamesCount = 0;
   let unknownIdentityGamesCount = 0;
   let evaluatedGamesCount = 0;
   let unevaluatedGamesCount = 0;
@@ -718,6 +720,8 @@ export function analyzeSavedGamesForCurriculum(
     }
 
     identifiedGamesCount++;
+    if (playerColor === "white") whiteGamesCount++;
+    else if (playerColor === "black") blackGamesCount++;
 
     const hasEval =
       gameItem.eval &&
@@ -1173,6 +1177,8 @@ export function analyzeSavedGamesForCurriculum(
   return {
     totalSavedGames: games.length,
     identifiedGamesCount,
+    whiteGamesCount,
+    blackGamesCount,
     unknownIdentityGamesCount,
     evaluatedGamesCount,
     unevaluatedGamesCount,

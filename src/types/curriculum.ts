@@ -167,6 +167,8 @@ export interface CrossGameAnalytics {
 export interface CurriculumSummary {
   totalSavedGames: number;
   identifiedGamesCount: number;
+  whiteGamesCount: number;
+  blackGamesCount: number;
   unknownIdentityGamesCount: number;
   evaluatedGamesCount: number;
   unevaluatedGamesCount: number;

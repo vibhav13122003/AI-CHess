@@ -71,7 +71,9 @@ export const useGameNavigation = () => {
 
   const exitPractice = useCallback(() => {
     if (practice) {
-      goToMove(practice.savedPly, game, true);
+      if (!practice.origin || practice.origin.pathname !== "/curriculum") {
+        goToMove(practice.savedPly, game, true);
+      }
       setPractice(undefined);
     }
   }, [game, goToMove, practice, setPractice]);

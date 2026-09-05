@@ -194,15 +194,28 @@ export default function LoadGame() {
 
             let origin: PracticeOrigin | undefined;
             if (router.query.origin === "curriculum") {
+              const username =
+                typeof router.query.username === "string"
+                  ? router.query.username
+                  : undefined;
+              const category =
+                typeof router.query.category === "string"
+                  ? router.query.category
+                  : undefined;
+              const pattern =
+                typeof router.query.pattern === "string"
+                  ? router.query.pattern
+                  : undefined;
+
               const query: Record<string, string> = {};
-              if (typeof router.query.username === "string")
-                query.username = router.query.username;
-              if (typeof router.query.category === "string")
-                query.category = router.query.category;
-              if (typeof router.query.pattern === "string")
-                query.pattern = router.query.pattern;
+              if (username) query.username = username;
+              if (category) query.category = category;
+              if (pattern) query.pattern = pattern;
+
               origin = {
                 pathname: "/curriculum",
+                username,
+                patternType: pattern,
                 query,
               };
             }

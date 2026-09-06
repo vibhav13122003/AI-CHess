@@ -1,3 +1,11 @@
+allowBuilds:
+  "@firebase/util": true
+  "@google/genai": true
+  "@sentry/cli": true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
+
 onlyBuiltDependencies:
   - "@firebase/util"
   - "@google/genai"
@@ -5,3 +13,5 @@ onlyBuiltDependencies:
   - protobufjs
   - sharp
   - unrs-resolver
+
+strictDepBuilds: false

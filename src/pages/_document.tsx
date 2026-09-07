@@ -4,36 +4,36 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
-        <link rel="icon" type="image/x-icon" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/x-icon" href="/favicon-32x32-v3.png" />
         <link
           rel="icon"
           type="image/png"
           sizes="180x180"
-          href="/favicon-32x32.png"
+          href="/favicon-32x32-v3.png"
         />
         <link
           rel="icon"
           type="image/png"
           sizes="128x128"
-          href="/favicon-32x32.png"
+          href="/favicon-32x32-v3.png"
         />
         <link
           rel="icon"
           type="image/png"
           sizes="64x64"
-          href="/favicon-32x32.png"
+          href="/favicon-32x32-v3.png"
         />
         <link
           rel="icon"
           type="image/png"
           sizes="32x32"
-          href="/favicon-32x32.png"
+          href="/favicon-32x32-v3.png"
         />
         <link
           rel="icon"
           type="image/png"
           sizes="16x16"
-          href="/favicon-32x32.png"
+          href="/favicon-32x32-v3.png"
         />
         <meta
           name="description"
@@ -47,7 +47,7 @@ export default function Document() {
         <meta property="og:url" content="https://ai-c-hess-e5f2.vercel.app/" />
         <meta
           property="og:image"
-          content="https://ai-c-hess-e5f2.vercel.app/favicon-32x32.png"
+          content="https://ai-c-hess-e5f2.vercel.app/favicon-32x32-v3.png"
         />
         <meta
           property="og:description"
@@ -65,7 +65,7 @@ export default function Document() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta
           name="twitter:image"
-          content="https://ai-c-hess-e5f2.vercel.app/favicon-32x32.png"
+          content="https://ai-c-hess-e5f2.vercel.app/favicon-32x32-v3.png"
         />
       </Head>
       <body>

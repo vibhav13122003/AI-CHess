@@ -60,7 +60,7 @@ export default function NavBar({ darkMode, switchDarkMode }: Props) {
           </IconButton>
 
           <Image
-            src="/favicon-32x32.png"
+            src="/favicon-32x32-v3.png"
             alt="ChessAi logo"
             width={40}
             height={40}

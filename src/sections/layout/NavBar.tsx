@@ -82,17 +82,7 @@ export default function NavBar({ darkMode, switchDarkMode }: Props) {
           </NavLink>
 
           <StyledIconButtonLink
-            href="https://discord.gg/Yr99abAcUr"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <IconButton color="inherit" component="span">
-              <Icon icon="ri:discord-fill" />
-            </IconButton>
-          </StyledIconButtonLink>
-
-          <StyledIconButtonLink
-            href="https://github.com/GuillaumeSD/Chesskit"
+            href="https://github.com/vibhav13122003/AI-CHess"
             target="_blank"
             rel="noopener noreferrer"
             sx={{ ml: "min(0.6rem, 0.8vw)" }}

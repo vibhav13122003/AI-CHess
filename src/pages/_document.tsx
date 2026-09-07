@@ -44,10 +44,10 @@ export default function Document() {
         <meta property="og:title" content="ChessAi" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="ChessAi" />
-        <meta property="og:url" content="https://chesskit.org/" />
+        <meta property="og:url" content="https://ai-c-hess-e5f2.vercel.app/" />
         <meta
           property="og:image"
-          content="https://chesskit.org/social-networks-1200x630.png"
+          content="https://ai-c-hess-e5f2.vercel.app/favicon-32x32.png"
         />
         <meta
           property="og:description"
@@ -57,7 +57,7 @@ export default function Document() {
         {/* Twitter */}
         <meta name="twitter:title" content="ChessAi" />
         <meta name="twitter:domain" content="chesskit.org" />
-        <meta name="twitter:url" content="https://chesskit.org/" />
+        <meta name="twitter:url" content="https://ai-c-hess-e5f2.vercel.app/" />
         <meta
           name="twitter:description"
           content="Analyze your chess games for free on any device with Stockfish!"
@@ -65,7 +65,7 @@ export default function Document() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta
           name="twitter:image"
-          content="https://chesskit.org/social-networks-1200x630.png"
+          content="https://ai-c-hess-e5f2.vercel.app/favicon-32x32.png"
         />
       </Head>
       <body>
